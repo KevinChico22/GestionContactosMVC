@@ -62,6 +62,16 @@ public class GestionDeContactosController {
     }
 
     private void agregar() {
+    	
+    	/// Evita guardar datos vacios 
+    	
+        if (view.txtNombre.getText().isEmpty() ||
+                view.txtTelefono.getText().isEmpty() ||
+                view.txtEmail.getText().isEmpty()) {
+
+                JOptionPane.showMessageDialog(view, "Complete todos los campos");
+                return;
+            }
 
         SwingWorker<Void, Void> worker = new SwingWorker<>() {
 
@@ -97,8 +107,13 @@ public class GestionDeContactosController {
                             c.getTelefono(),
                             c.getEmail()
                     });
+                    
+                    //limpia los campos
+                    view.txtNombre.setText("");
+                    view.txtTelefono.setText("");
+                    view.txtEmail.setText("");
 
-                    // 🔥 OCULTAR BARRA
+              
                     view.progressBar.setIndeterminate(false);
                     view.progressBar.setVisible(false);
                 });
