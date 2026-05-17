@@ -26,9 +26,10 @@ public class GestionDeContactosView extends JFrame {
 	
     public JTable tabla;
     public DefaultTableModel modeloTabla;
-    public JButton btnAgregar, btnExportar;
+    public JButton btnAgregar, btnEditar, btnExportar;
     public JTextField txtNombre, txtTelefono, txtEmail, txtBuscar;
     public JProgressBar progressBar;
+    public JLabel lblNotificacion;
 
     public GestionDeContactosView(String idioma, ContactosModel model) {
         this.model = model;
@@ -153,6 +154,7 @@ public class GestionDeContactosView extends JFrame {
         
         btnAgregar = new JButton(bundle.getString("agregar"));
         btnExportar = new JButton(bundle.getString("exportar"));
+        btnEditar = new JButton("Editar");
         
         /// iconos y tamaño
     
@@ -175,9 +177,13 @@ public class GestionDeContactosView extends JFrame {
 
         btnExportar.setBackground(COLOR_PRIMARIO);
         btnExportar.setForeground(Color.WHITE);
+        
+        btnEditar.setBackground(Color.ORANGE);
+        btnEditar.setForeground(Color.WHITE);
 
         botones.add(btnAgregar);
         botones.add(btnExportar);
+        botones.add(btnEditar);
         
         //boton de ingles 
         botones.add(comboIdioma);
@@ -187,6 +193,13 @@ public class GestionDeContactosView extends JFrame {
 
         progressBar = new JProgressBar();
         
+        //Etiqueta de notificaciones 
+        lblNotificacion = new JLabel(" ");
+        lblNotificacion.setHorizontalAlignment(SwingConstants.CENTER);
+        lblNotificacion.setForeground(Color.BLUE);
+        lblNotificacion.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        
+        
         //barra de progreso mejora
         progressBar.setVisible(false);
         progressBar.setForeground(COLOR_SECUNDARIO);
@@ -194,7 +207,8 @@ public class GestionDeContactosView extends JFrame {
         progressBar.setPreferredSize(new java.awt.Dimension(100, 20));
         
 
-        inferior.add(botones, BorderLayout.CENTER);
+        inferior.add(botones, BorderLayout.NORTH);
+        inferior.add(lblNotificacion, BorderLayout.CENTER);
         inferior.add(progressBar, BorderLayout.SOUTH);
 
         panel.add(inferior, BorderLayout.SOUTH);

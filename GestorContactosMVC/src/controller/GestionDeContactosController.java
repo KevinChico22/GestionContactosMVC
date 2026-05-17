@@ -36,11 +36,52 @@ public class GestionDeContactosController {
 
         // EXPORTAR
         view.btnExportar.addActionListener(e -> exportar());
+        // Editar
+        view.btnEditar.addActionListener(e -> editarContacto());
 
-        // FILTRO
+     // BÚSQUEDA EN SEGUNDO PLANO
         view.txtBuscar.addKeyListener(new KeyAdapter() {
+
+            @Override
             public void keyReleased(KeyEvent e) {
-                sorter.setRowFilter(RowFilter.regexFilter(view.txtBuscar.getText()));
+
+                SwingWorker<Void, Void> worker = new SwingWorker<>() {
+
+                    @Override
+                    protected Void doInBackground() throws Exception {
+
+                        // simulación de búsqueda pesada
+                        Thread.sleep(300);
+
+                        return null;
+                    }
+
+                    @Override
+                    protected void done() {
+
+                        SwingUtilities.invokeLater(() -> {
+
+                            String textoBusqueda = view.txtBuscar.getText();
+
+                            // si está vacío muestra todo
+                            if (textoBusqueda.trim().isEmpty()) {
+
+                                sorter.setRowFilter(null);
+
+                            } else {
+
+                                sorter.setRowFilter(
+                                RowFilter.regexFilter(
+                               "(?i)" + textoBusqueda
+                                        )
+                                );
+                            }
+                        });
+                    }
+                };
+
+                // INICIA EL HILO
+                worker.execute();
             }
         });
 
@@ -62,38 +103,61 @@ public class GestionDeContactosController {
     }
 
     private void agregar() {
-    	
-    	/// Evita guardar datos vacios 
-    	
+
+        // validar campos vacíos
         if (view.txtNombre.getText().isEmpty() ||
                 view.txtTelefono.getText().isEmpty() ||
                 view.txtEmail.getText().isEmpty()) {
 
-                JOptionPane.showMessageDialog(view, "Complete todos los campos");
-                return;
-            }
+            JOptionPane.showMessageDialog(view,
+                    "Complete todos los campos");
 
-        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            return;
+        }
+
+        SwingWorker<Boolean, Void> worker = new SwingWorker<>() {
 
             @Override
-            protected Void doInBackground() throws Exception {
+            protected Boolean doInBackground() throws Exception {
 
-                // 🔥 MOSTRAR BARRA
+                // mostrar barra
                 SwingUtilities.invokeLater(() -> {
                     view.progressBar.setVisible(true);
                     view.progressBar.setIndeterminate(true);
+                    mostrarNotificacion("Contacto guardado con éxito");
                 });
 
-                Thread.sleep(600); // simulación de proceso
+                Thread.sleep(600);
 
-                return null;
+                // verificacion en segundo plano
+                return model.existeContacto(
+                        view.txtNombre.getText(),
+                        view.txtTelefono.getText(),
+                        view.txtEmail.getText()
+                );
             }
 
             @Override
             protected void done() {
 
-                SwingUtilities.invokeLater(() -> {
+                try {
 
+                    boolean existe = get();
+
+                    // si ya existe
+                    if (existe) {
+
+                        JOptionPane.showMessageDialog(
+                                view,
+                                "El contacto ya está registrado"
+                        );
+
+                        view.progressBar.setVisible(false);
+
+                        return;
+                    }
+
+                    // crear contacto
                     contactos c = new contactos(
                             view.txtNombre.getText(),
                             view.txtTelefono.getText(),
@@ -107,21 +171,123 @@ public class GestionDeContactosController {
                             c.getTelefono(),
                             c.getEmail()
                     });
-                    
-                    //limpia los campos
+
+                    // limpiar campos
                     view.txtNombre.setText("");
                     view.txtTelefono.setText("");
                     view.txtEmail.setText("");
 
-              
+                    // ocultar barra
                     view.progressBar.setIndeterminate(false);
                     view.progressBar.setVisible(false);
-                });
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         };
 
         worker.execute();
     }
+    
+    private void editarContacto() {
+
+        int fila = view.getFilaSeleccionada();
+
+        // validar selección
+        if (fila == -1) {
+
+            JOptionPane.showMessageDialog(
+                    view,
+                    "Seleccione un contacto"
+            );
+
+            return;
+        }
+
+        // bloqueo de edición
+        synchronized (model) {
+
+            String nuevoNombre = JOptionPane.showInputDialog(
+                    view,
+                    "Nuevo nombre:",
+                    view.tabla.getValueAt(fila, 0)
+            );
+
+            String nuevoTelefono = JOptionPane.showInputDialog(
+                    view,
+                    "Nuevo teléfono:",
+                    view.tabla.getValueAt(fila, 1)
+            );
+
+            String nuevoEmail = JOptionPane.showInputDialog(
+                    view,
+                    "Nuevo email:",
+                    view.tabla.getValueAt(fila, 2)
+            );
+
+            // validación
+            if (nuevoNombre == null ||
+                    nuevoTelefono == null ||
+                    nuevoEmail == null) {
+
+                return;
+            }
+
+            // THREAD DE EDICIÓN
+            SwingWorker<Void, Void> worker = new SwingWorker<>() {
+
+                @Override
+                protected Void doInBackground() throws Exception {
+
+                    Thread.sleep(800);
+
+                    contactos actualizado = new contactos(
+                            nuevoNombre,
+                            nuevoTelefono,
+                            nuevoEmail
+                    );
+
+                    model.editarContacto(fila, actualizado);
+
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+
+                    SwingUtilities.invokeLater(() -> {
+
+                        // actualizar tabla
+                        view.modeloTabla.setValueAt(
+                                nuevoNombre,
+                                fila,
+                                0
+                        );
+
+                        view.modeloTabla.setValueAt(
+                                nuevoTelefono,
+                                fila,
+                                1
+                        );
+
+                        view.modeloTabla.setValueAt(
+                                nuevoEmail,
+                                fila,
+                                2
+                        );
+
+                        mostrarNotificacion(
+                                "Contacto editado correctamente"
+                        );
+                    });
+                }
+            };
+
+            worker.execute();
+        }
+    }
+    
 
     private void eliminar() {
 
@@ -163,27 +329,79 @@ public class GestionDeContactosController {
 
         worker.execute();
     }
- 
-    private void exportar() {
+ // NOTIFICACIONES
+    private void mostrarNotificacion(String mensaje) {
 
-        try {
-            FileWriter writer = new FileWriter("contactos.csv");
+        Thread hilo = new Thread(() -> {
 
-            for (contactos c : model.getLista()) {
-                writer.write(
-                        c.getNombre() + "," +
-                        c.getTelefono() + "," +
-                        c.getEmail() + "\n"
-                );
+            SwingUtilities.invokeLater(() -> {
+                view.lblNotificacion.setText(mensaje);
+            });
+
+            try {
+
+                // duración visible
+                Thread.sleep(3000);
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
 
-            writer.close();
+            SwingUtilities.invokeLater(() -> {
+                view.lblNotificacion.setText(" ");
+            });
+        });
 
-            JOptionPane.showMessageDialog(view,
-                    "Exportación exitosa");
+        hilo.start();
+    }
+    
+    private synchronized void exportar() {
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+
+            @Override
+            protected Void doInBackground() throws Exception {
+
+                SwingUtilities.invokeLater(() -> {
+                    view.progressBar.setVisible(true);
+                    view.progressBar.setIndeterminate(true);
+                });
+
+                synchronized (this) {
+
+                    FileWriter writer = new FileWriter("contactos.csv");
+
+                    Thread.sleep(1000);
+
+                    for (contactos c : model.getLista()) {
+
+                        writer.write(
+                                c.getNombre() + "," +
+                                c.getTelefono() + "," +
+                                c.getEmail() + "\n"
+                        );
+                    }
+
+                    writer.close();
+                }
+
+                return null;
+            }
+
+            @Override
+            protected void done() {
+
+                SwingUtilities.invokeLater(() -> {
+
+                    view.progressBar.setIndeterminate(false);
+                    view.progressBar.setVisible(false);
+
+                    mostrarNotificacion("Exportación completada");
+                    
+                });
+            }
+        };
+
+        worker.execute();
     }
 }
